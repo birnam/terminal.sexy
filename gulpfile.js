@@ -1,95 +1,103 @@
+//jshint esversion: 6
+
+(() => {
 'use strict';
 
-var fs           = require('fs');
-var path         = require('path');
-var gulp         = require('gulp');
-var brfs         = require('brfs');
-var source       = require('vinyl-source-stream');
-var connect      = require('gulp-connect');
-var sass         = require('gulp-sass');
-var autoprefixer = require('gulp-autoprefixer');
-var reactify     = require('reactify');
-var browserify   = require('browserify');
-var watchify     = require('watchify');
-var uglify       = require('gulp-uglify');
-var replace      = require('gulp-replace');
+  const fs           = require('fs');
+  const path         = require('path');
+  const gulp         = require('gulp');
+  const brfs         = require('brfs');
+  const source       = require('vinyl-source-stream');
+  const connect      = require('gulp-connect');
+  const sass         = require('gulp-sass');
+  const autoprefixer = require('gulp-autoprefixer');
+  const reactify     = require('reactify');
+  const browserify   = require('browserify');
+  const watchify     = require('watchify');
+  const uglify       = require('gulp-uglify');
+  const replace      = require('gulp-replace');
 
-gulp.task('default', ['set-version', 'lib', 'style'], function () {
-  gulp.watch('./stylesheets/**/*.scss', ['style']);
+  function watch() {
+    return gulp.watch('./stylesheets/**/*.scss', gulp.series(style));
+  }
 
-  return connect.server({
-    root: ['dist'],
-    port: 8000,
-    livereload: true
-  });
-}); 
+  function fireUp() {
+    return connect.server({
+      root: ['dist'],
+      port: 8000,
+      livereload: true
+    });
+  }
 
-gulp.task('lib', function () {
-  var bundler = watchify(browserify({
-    cache: {},
-    packageCache: {},
-    fullPaths: true,
-    extensions: '.jsx'
-  }));
+  function lib(done) {
+    var bundler = watchify(browserify({
+      cache: {},
+      packageCache: {},
+      fullPaths: true,
+      extensions: '.jsx'
+    }));
 
-  bundler.add('./lib/init.js');
-  bundler.transform(reactify);
-  bundler.transform(brfs);
+    bundler.add('./lib/init.js');
+    bundler.transform(reactify);
+    bundler.transform(brfs);
 
-  bundler.on('update', rebundle);
+    bundler.on('update', rebundle);
 
-  function rebundle () {
-    console.log('rebundling');
-    return bundler.bundle()
-      .on('error', function (err) {
-        console.log(err.message);
-      })
-      .pipe(source('main.js'))
-      .pipe(gulp.dest('./dist/js'))
+    function rebundle () {
+      console.log('rebundling');
+      return bundler.bundle()
+        .on('error', function (err) {
+          console.log(err.message);
+        })
+        .pipe(source('main.js'))
+        .pipe(gulp.dest('./dist/js'))
+        .pipe(connect.reload());
+    }
+
+    return rebundle();
+  }
+
+  function style(done) {
+    return gulp.src('./stylesheets/main.scss')
+      .pipe(sass({errLogToConsole: true, outputStyle: 'compressed'}))
+      .pipe(autoprefixer())
+      .pipe(gulp.dest('./dist/css'))
       .pipe(connect.reload());
   }
 
-  return rebundle();
-});
+  function setVersion(done) {
+    return gulp.src('./dist/index.html')
+      .pipe(replace(/\?v=([\w\.]+)/g, '?v=' + require('./package.json').version))
+      .pipe(gulp.dest('./dist/'))
+      .pipe(connect.reload());
+  }
 
-gulp.task('style', function () {
-  return gulp.src('./stylesheets/main.scss')
-    .pipe(sass({errLogToConsole: true, outputStyle: 'compressed'}))
-    .pipe(autoprefixer())
-    .pipe(gulp.dest('./dist/css'))
-    .pipe(connect.reload());
-});
+  function schemas(done) {
+    var source = 'dist/schemes';
+    var index = 'index.json';
+    var output = [];
 
-gulp.task('set-version', function () {
-  return gulp.src('./dist/index.html')
-  .pipe(replace(/\?v=([\w\.]+)/g, '?v=' + require('./package.json').version))
-  .pipe(gulp.dest('./dist/'))
-  .pipe(connect.reload());
-});
+    fs.readdirSync(source).forEach(function (folder) {
+      if (folder !== index) {
 
-gulp.task('schemes', function () {
-  var source = 'dist/schemes';
-  var index = 'index.json';
-  var output = [];
+        var files = fs.readdirSync(path.join(source, folder));
 
-  fs.readdirSync(source).forEach(function (folder) {
-    if (folder !== index) {
+        output = output.concat(files.map(function (file) {
+          return path.join(folder, path.basename(file, '.json'));
+        }));
 
-      var files = fs.readdirSync(path.join(source, folder));
+      }
+    });
 
-      output = output.concat(files.map(function (file) {
-        return path.join(folder, path.basename(file, '.json'));
-      }));
+    fs.writeFileSync(path.join(source, index), JSON.stringify(output));
+  }
 
-    }
-  });
+  function minify(done) {
+    return gulp.src('./dist/js/*')
+      .pipe(uglify())
+      .pipe(gulp.dest('./dist/js'));
+  }
 
-  fs.writeFileSync(path.join(source, index), JSON.stringify(output));
-});
+  exports.default = gulp.series(setVersion, lib, style, gulp.parallel(fireUp, watch));
 
-gulp.task('minify', function () {
-  return gulp.src('./dist/js/*')
-    .pipe(uglify())
-    .pipe(gulp.dest('./dist/js'));
-});
-
+})();

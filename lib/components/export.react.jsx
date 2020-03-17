@@ -7,6 +7,7 @@ var saveAs = require('filesaver.js');
 var AppStore = require('../stores/app');
 
 termcolors.json = require('../formats/json');
+termcolors.winterminaljson = require('../formats/winterminaljson');
 
 var Export = React.createClass({
 
@@ -76,6 +77,7 @@ var Export = React.createClass({
             <option value=''>-- OTHER --</option>
             <option value='textmate'>Sublime Text (experimental)</option>
             <option value='json'>JSON Scheme</option>
+            <option value='winterminaljson'>Windows Terminal profiles.json</option>
           </select>
         </div>
         <textarea value={this.state.text} readOnly spellCheck='false'
