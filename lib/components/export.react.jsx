@@ -8,6 +8,7 @@ var AppStore = require('../stores/app');
 
 termcolors.json = require('../formats/json');
 termcolors.winterminaljson = require('../formats/winterminaljson');
+termcolors.zshthemecolors = require('../formats/zshthemecolors');
 
 var Export = React.createClass({
 
@@ -78,6 +79,7 @@ var Export = React.createClass({
             <option value='textmate'>Sublime Text (experimental)</option>
             <option value='json'>JSON Scheme</option>
             <option value='winterminaljson'>Windows Terminal profiles.json</option>
+            <option value='zshthemecolors'>dkw.zsh-theme colors</option>
           </select>
         </div>
         <textarea value={this.state.text} readOnly spellCheck='false'

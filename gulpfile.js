@@ -78,18 +78,21 @@
     var output = [];
 
     fs.readdirSync(source).forEach(function (folder) {
-      if (folder !== index) {
+      var folderstat = fs.lstatSync(path.join(source, folder));
+      if (folder !== index && folderstat.isDirectory()) {
+	console.log("adding directory: " + folder);
 
-        var files = fs.readdirSync(path.join(source, folder));
+	var files = fs.readdirSync(path.join(source, folder));
 
-        output = output.concat(files.map(function (file) {
-          return path.join(folder, path.basename(file, '.json'));
-        }));
+	output = output.concat(files.map(function (file) {
+	  return path.join(folder, path.basename(file, '.json'));
+	}));
 
       }
     });
 
     fs.writeFileSync(path.join(source, index), JSON.stringify(output));
+    done();
   }
 
   function minify(done) {
@@ -98,6 +101,7 @@
       .pipe(gulp.dest('./dist/js'));
   }
 
-  exports.default = gulp.series(setVersion, lib, style, gulp.parallel(fireUp, watch));
+  exports.default = gulp.series(setVersion, lib, style, schemas, gulp.parallel(fireUp, watch));
+  exports.schemas = gulp.series(schemas);
 
 })();
